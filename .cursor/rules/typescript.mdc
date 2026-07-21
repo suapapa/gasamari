@@ -1,0 +1,14 @@
+---
+description: TypeScript conventions for Gasamari web app
+globs: apps/web/**/*.{ts,tsx}
+alwaysApply: true
+---
+
+# TypeScript Conventions
+
+- Use strict TypeScript. Avoid `any`; prefer `unknown` with type guards or well-defined types.
+- Keep components small and focused; extract reusable logic into custom hooks in `hooks/`.
+- Use Tailwind CSS for layout and styling; avoid inline styles except for dynamic values derived from runtime data.
+- Prefer server-side token handling in Next.js API routes; never expose Spotify tokens to the browser.
+- Name components in PascalCase and hooks/utilities in camelCase.
+- Add explicit return types for public library functions and API route handlers when possible.

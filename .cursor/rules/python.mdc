@@ -1,0 +1,14 @@
+---
+description: Python/FastAPI conventions for Gasamari API
+globs: apps/api/**/*.py
+alwaysApply: true
+---
+
+# Python/FastAPI Conventions
+
+- Use Pydantic models for all request and response validation.
+- Keep FastAPI route handlers thin; delegate business logic to modules in `services/`.
+- Cache lyrics results to disk (`./cache/lyrics/`) to avoid repeated `syncedlyrics` calls.
+- Handle exceptions gracefully and return clear HTTP status codes and messages.
+- Follow PEP 8 and Ruff formatting rules.
+- Use dependency injection for shared resources (e.g., HTTP clients, cache paths).

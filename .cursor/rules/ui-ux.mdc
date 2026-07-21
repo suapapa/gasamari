@@ -1,0 +1,16 @@
+---
+description: UI/UX design rules for Gasamari
+globs: apps/web/**/*.{tsx,css}
+alwaysApply: true
+---
+
+# UI/UX Design Rules
+
+- Follow the dark OLED design system defined in `PLAN.md`.
+- Display only the current synced lyrics line on screen; previous/next lines are not shown.
+- Use vector icons from Lucide or Heroicons; never use emojis as structural icons.
+- Respect `prefers-reduced-motion`; provide reduced or no animations when requested.
+- Maintain a minimum text contrast ratio of 4.5:1 (WCAG AA).
+- Touch targets must be at least 44×44pt on mobile.
+- Keep animations performant: use `transform` and `opacity` only, avoid animating `width`/`height`/`top`/`left`.
+- Mobile-first responsive design; verify layouts at 375px, 768px, 1024px, and 1440px.

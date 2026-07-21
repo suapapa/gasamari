@@ -1,0 +1,14 @@
+---
+description: Security rules for Gasamari
+globs: **/*
+alwaysApply: true
+---
+
+# Security Rules
+
+- Never hardcode Spotify Client Secret or access tokens in source files.
+- Store all secrets in environment variables only (`SPOTIFY_CLIENT_SECRET`, `SPOTIFY_CLIENT_ID`, etc.).
+- Use HttpOnly cookies for storing Spotify access/refresh tokens on the client.
+- Do not expose refresh tokens in API responses, logs, or client-side state.
+- If a secret appears to be leaked, immediately tell the user to regenerate it in the Spotify Dashboard.
+- Keep `.env*` files out of git; provide `.env.example` templates only.
