@@ -59,7 +59,7 @@ pnpm install
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 SPOTIFY_REDIRECT_URI=http://localhost:3000/api/auth/callback/spotify
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+API_BASE_URL=http://127.0.0.1:8000
 ```
 
 **Backend** (`apps/api/.env`):
@@ -70,6 +70,7 @@ CORS_ORIGINS=http://localhost:3000
 ```
 
 루트의 `.env.example`과 각 앱의 `.env.local.example`, `.env.example`도 참고하세요.
+`API_BASE_URL`은 서버 전용입니다. 브라우저는 `/api/lyrics`만 호출하고 Next가 FastAPI로 프록시합니다.
 
 ### 3. Python API 의존성 (uv)
 
@@ -136,6 +137,7 @@ gasamari/
 | POST | `/api/auth/logout` | 로그아웃 |
 | GET | `/api/auth/status` | 인증 상태 확인 |
 | GET | `/api/spotify/now-playing` | 현재 재생 곡 정보 |
+| GET | `/api/lyrics?track=&artist=&album=` | 가사 검색 (FastAPI 프록시) |
 
 ### Backend (FastAPI)
 
@@ -176,18 +178,18 @@ pnpm dev:api
 | Frontend | Vercel |
 | Backend | Railway, Fly.io, 또는 개인 서버 |
 
-배포 시 루트 `.env`에서 **공개 URL**을 설정하세요 (`0.0.0.0` / `127.0.0.1` 금지):
+배포 시 루트 `.env` 예시 (`0.0.0.0` / 브라우저용 `localhost` 금지):
 
 ```env
 APP_URL=https://your-domain.com
 SPOTIFY_REDIRECT_URI=https://your-domain.com/api/auth/callback/spotify
-NEXT_PUBLIC_API_BASE_URL=https://your-api-domain.com
+API_BASE_URL=http://api:8000
 CORS_ORIGINS=https://your-domain.com
 ```
 
-Spotify Dashboard Redirect URI에도 같은 `SPOTIFY_REDIRECT_URI`를 등록한 뒤 컨테이너를 다시 띄우세요.
-
-Docker의 `HOSTNAME=0.0.0.0`은 바인드 주소일 뿐이며, OAuth 리다이렉트에 쓰면 `ERR_CONNECTION_REFUSED`가 납니다.
+- `API_BASE_URL`은 **컨테이너 내부**에서 Next → FastAPI 주소입니다. Docker Compose 기본값은 `http://api:8000`이며, 공개 URL이 필요 없습니다.
+- Spotify Dashboard Redirect URI에도 같은 `SPOTIFY_REDIRECT_URI`를 등록한 뒤 컨테이너를 다시 띄우세요.
+- Docker의 `HOSTNAME=0.0.0.0`은 바인드 주소일 뿐이며, OAuth 리다이렉트에 쓰면 `ERR_CONNECTION_REFUSED`가 납니다.
 
 ## 알려진 제한사항
 

@@ -40,7 +40,6 @@ export function useSyncedLyrics(track: NowPlayingTrack | null): SyncedLyricsStat
     }
 
     let cancelled = false;
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
     const params = new URLSearchParams({
       track: trackName,
       artist: artistName,
@@ -53,7 +52,7 @@ export function useSyncedLyrics(track: NowPlayingTrack | null): SyncedLyricsStat
       setLyrics(null);
 
       try {
-        const res = await fetch(`${apiBase}/lyrics?${params.toString()}`);
+        const res = await fetch(`/api/lyrics?${params.toString()}`);
         if (cancelled) return;
 
         if (res.status === 404) {

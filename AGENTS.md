@@ -41,7 +41,7 @@
 
 - **Monorepo**: pnpm workspaces 사용
 - **Lint/Format**: Prettier + ESLint (web), Ruff (api)
-- **API 통신**: Next.js API Routes를 통해 Spotify 프록시, 별도 FastAPI `/lyrics` 사용
+- **API 통신**: Next.js API Routes로 Spotify·가사(`/api/lyrics` → FastAPI) 프록시
 
 ## 4. 중요 규칙
 
@@ -72,7 +72,7 @@
 
 1. Frontend가 Next.js API Route를 통해 Spotify 현재 재생 정보 polling.
 2. `track_id`, `progress_ms`, `album_art`, `is_playing` 등 획득.
-3. Frontend가 FastAPI `/lyrics`로 가사 요청 (`track`, `artist`, `album`).
+3. Frontend가 Next.js `/api/lyrics`로 가사 요청 (`track`, `artist`, `album`); 서버가 FastAPI로 프록시.
 4. Backend가 `syncedlyrics`로 LRC 검색 후 파싱/캐싱, JSON 반환.
 5. Frontend가 `progress_ms`와 LRC 타임스탬프를 비교해 현재 라인 계산.
 6. `fast-average-color`로 앨범아트 팔레트 추출 후 테마 적용.
@@ -86,7 +86,7 @@
 SPOTIFY_CLIENT_ID=...
 SPOTIFY_CLIENT_SECRET=...
 SPOTIFY_REDIRECT_URI=http://localhost:3000/api/auth/callback/spotify
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+API_BASE_URL=http://127.0.0.1:8000
 ```
 
 ### `apps/api` (`.env`)
@@ -96,6 +96,7 @@ LYRICS_CACHE_DIR=./cache/lyrics
 CORS_ORIGINS=http://localhost:3000
 ```
 
+> `API_BASE_URL`은 서버 전용(런타임). Docker Compose에서는 `http://api:8000`.
 > `.env*` 파일은 절대 커밋하지 않는다. 샘플은 `.env.example`로 제공.
 
 ## 6. Cursor Rules
