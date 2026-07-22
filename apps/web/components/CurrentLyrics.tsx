@@ -36,7 +36,7 @@ export const CurrentLyrics = memo(function CurrentLyrics({
     <BlurText
       key={line.timeMs}
       text={line.text}
-      className="max-w-4xl px-6 text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight text-foreground"
+      className="w-full px-4 sm:px-8 md:px-12 text-[clamp(2.75rem,7vw+1rem,8rem)] leading-[1.15] break-keep text-foreground"
       glowColor={theme.glow}
     />
   );

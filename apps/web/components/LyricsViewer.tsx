@@ -84,21 +84,30 @@ export function LyricsViewer() {
 
       <NowPlayingHeader track={track} />
 
-      <main className="flex flex-1 flex-col items-center justify-center px-4 pb-safe">
+      <main className="flex w-full flex-1 flex-col items-center justify-center px-2 sm:px-4 pb-safe">
         {renderMessage()}
       </main>
 
       {track && (
         <footer className="flex flex-col gap-3 px-6 pb-6 pb-safe">
           <div className="flex items-center justify-between text-xs text-foreground/50 font-body">
-            <span>{formatTime(currentProgressMs)}</span>
+            <span>
+              {formatTime(Math.min(currentProgressMs, track.durationMs))}
+            </span>
             <span>{formatTime(track.durationMs)}</span>
           </div>
           <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full transition-all duration-300"
+              className="h-full rounded-full"
               style={{
-                width: `${Math.min(100, (currentProgressMs / track.durationMs) * 100)}%`,
+                width: `${
+                  track.durationMs > 0
+                    ? Math.min(
+                        100,
+                        Math.max(0, (currentProgressMs / track.durationMs) * 100),
+                      )
+                    : 0
+                }%`,
                 backgroundColor: theme.accent,
               }}
             />

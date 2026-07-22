@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { findActiveLineIndex } from "@/lib/lrcParser";
 import type { LyricLine, NowPlayingTrack, SyncedLyrics } from "@/types";
 
@@ -15,6 +15,11 @@ interface SyncedLyricsState {
   setSyncOffsetMs: (offset: number) => void;
 }
 
+function clampProgress(progressMs: number, durationMs: number): number {
+  if (durationMs <= 0) return Math.max(0, progressMs);
+  return Math.min(Math.max(0, progressMs), durationMs);
+}
+
 export function useSyncedLyrics(track: NowPlayingTrack | null): SyncedLyricsState {
   const [lyrics, setLyrics] = useState<SyncedLyrics | null>(null);
   const [currentProgressMs, setCurrentProgressMs] = useState(0);
@@ -23,6 +28,7 @@ export function useSyncedLyrics(track: NowPlayingTrack | null): SyncedLyricsStat
   const [offset, setOffset] = useState(0);
 
   const progressRef = useRef(0);
+  const durationRef = useRef(0);
   const lastUpdateRef = useRef(0);
 
   const trackId = track?.trackId ?? null;
@@ -81,20 +87,25 @@ export function useSyncedLyrics(track: NowPlayingTrack | null): SyncedLyricsStat
   }, [trackId, trackName, artistName, albumName]);
 
   const progressMs = track?.progressMs;
+  const durationMs = track?.durationMs;
   const isPlaying = track?.isPlaying;
 
-  useEffect(() => {
-    if (progressMs === undefined) return;
+  // Sync before paint so track skips don't flash the previous song's progress.
+  useLayoutEffect(() => {
+    if (progressMs === undefined || durationMs === undefined) {
+      progressRef.current = 0;
+      durationRef.current = 0;
+      lastUpdateRef.current = performance.now();
+      setCurrentProgressMs(0);
+      return;
+    }
 
-    progressRef.current = progressMs;
+    const next = clampProgress(progressMs, durationMs);
+    progressRef.current = next;
+    durationRef.current = durationMs;
     lastUpdateRef.current = performance.now();
-
-    const rafId = requestAnimationFrame(() => {
-      setCurrentProgressMs(progressMs);
-    });
-
-    return () => cancelAnimationFrame(rafId);
-  }, [progressMs, isPlaying, trackId]);
+    setCurrentProgressMs(next);
+  }, [progressMs, durationMs, isPlaying, trackId]);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -103,7 +114,11 @@ export function useSyncedLyrics(track: NowPlayingTrack | null): SyncedLyricsStat
 
     const tick = () => {
       const elapsed = performance.now() - lastUpdateRef.current;
-      setCurrentProgressMs(progressRef.current + elapsed);
+      const next = clampProgress(
+        progressRef.current + elapsed,
+        durationRef.current,
+      );
+      setCurrentProgressMs(next);
       rafId = requestAnimationFrame(tick);
     };
 

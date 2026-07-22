@@ -117,7 +117,10 @@ const AnimatedParagraph = memo(function AnimatedParagraph({
   if (reducedMotion) {
     return (
       <p
-        className={cn("font-lyrics text-center font-medium", className)}
+        className={cn(
+          "w-full break-keep font-lyrics text-center font-medium",
+          className,
+        )}
         style={{ textShadow: `0 0 20px ${glowColor}80` }}
       >
         {text}
@@ -127,7 +130,10 @@ const AnimatedParagraph = memo(function AnimatedParagraph({
 
   return (
     <motion.p
-      className={cn("font-lyrics text-center font-medium", className)}
+      className={cn(
+        "w-full break-keep font-lyrics text-center font-medium",
+        className,
+      )}
       initial={variant.initial}
       animate={variant.animate}
       transition={withTransitionSpeed(variant.transition)}
@@ -147,7 +153,7 @@ export const BlurText = memo(function BlurText({
 
   return (
     <div
-      className={cn("flex flex-col items-center gap-2", className)}
+      className="flex w-full flex-col items-center gap-2"
       aria-live="polite"
     >
       {paragraphs.map((paragraph, index) => (
@@ -155,6 +161,7 @@ export const BlurText = memo(function BlurText({
           key={`${paragraph}-${index}`}
           text={paragraph}
           glowColor={glowColor}
+          className={className}
         />
       ))}
     </div>
