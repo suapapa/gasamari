@@ -15,7 +15,7 @@
 - [ ] `PLAN.md`를 끝까지 읽었는가?
 - [ ] 현재 워크스페이스의 `apps/web` 또는 `apps/api` 구조를 확인했는가?
 - [ ] 변경하려는 파일이 이미 존재하는지 확인 후, 존재하면 먼저 읽고 수정했는가?
-- [ ] 새로운 의존성을 추가할 때는 `package.json` 또는 `requirements.txt`도 함께 업데이트했는가?
+- [ ] 새로운 의존성을 추가할 때는 `package.json` 또는 `apps/api/pyproject.toml`도 함께 업데이트했는가?
 - [ ] Spotify Client Secret 등 민감값을 소스코드에 포함하지 않았는가?
 
 ## 3. 기술 스택 및 구조
@@ -32,6 +32,7 @@
 ### Backend (`apps/api`)
 
 - **Framework**: FastAPI, Python 3.11+
+- **Package manager**: [uv](https://docs.astral.sh/uv/) — `uv sync`, `uv run`
 - **Lyrics**: `syncedlyrics` Python 패키지
 - **Cache**: 디스크 `./cache/lyrics/` 또는 SQLite (`.gitignore`에 포함됨)
 - **CORS**: Next.js 개발/프로덕션 도메인만 허용

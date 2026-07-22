@@ -1,0 +1,16 @@
+{
+  "name": "gasamari",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n web,api -c cyan,green \"pnpm dev:web\" \"pnpm dev:api\"",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "uv run --directory apps/api uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+    "build": "pnpm --filter web build",
+    "lint": "pnpm --filter web lint && uv run --directory apps/api ruff check ."
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3",
+    "prettier": "^3.5.3"
+  },
+  "packageManager": "pnpm@11.15.1"
+}
