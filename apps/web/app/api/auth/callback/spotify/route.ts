@@ -2,6 +2,13 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAMES, exchangeCodeForTokens, resolveRedirectUri } from "@/lib/spotify";
 
+const TOKEN_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+};
+
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
@@ -27,34 +34,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const tokens = await exchangeCodeForTokens(code, codeVerifier, redirectUri);
     const expiresAt = Date.now() + tokens.expires_in * 1_000;
 
-    cookieStore.set(COOKIE_NAMES.accessToken, tokens.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
+    const response = NextResponse.redirect(new URL("/", request.url));
+
+    response.cookies.set(COOKIE_NAMES.accessToken, tokens.access_token, {
+      ...TOKEN_COOKIE_OPTIONS,
       maxAge: tokens.expires_in,
     });
-    cookieStore.set(COOKIE_NAMES.expiresAt, String(expiresAt), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
+    response.cookies.set(COOKIE_NAMES.expiresAt, String(expiresAt), {
+      ...TOKEN_COOKIE_OPTIONS,
       maxAge: tokens.expires_in,
     });
 
     if (tokens.refresh_token) {
-      cookieStore.set(COOKIE_NAMES.refreshToken, tokens.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
+      response.cookies.set(COOKIE_NAMES.refreshToken, tokens.refresh_token, {
+        ...TOKEN_COOKIE_OPTIONS,
         maxAge: 60 * 60 * 24 * 30,
       });
     }
 
-    cookieStore.delete(COOKIE_NAMES.codeVerifier);
+    response.cookies.delete(COOKIE_NAMES.codeVerifier);
 
-    return NextResponse.redirect(new URL("/", request.url));
+    return response;
   } catch {
     return NextResponse.redirect(new URL("/?error=token_exchange", request.url));
   }

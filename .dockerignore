@@ -1,0 +1,17 @@
+**/node_modules
+**/.next
+**/.venv
+**/__pycache__
+**/.ruff_cache
+**/cache
+**/.git
+**/.cursor
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.local.example
+**/*.md
+**/tsconfig.tsbuildinfo
+**/.DS_Store
+apps/api
+agent-transcripts
