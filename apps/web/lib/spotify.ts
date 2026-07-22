@@ -37,7 +37,7 @@ export function getSpotifyConfig() {
 }
 
 export function resolveRedirectUri(requestOrigin: string): string {
-  if (process.env.NODE_ENV === "production" && process.env.SPOTIFY_REDIRECT_URI) {
+  if (process.env.SPOTIFY_REDIRECT_URI) {
     return process.env.SPOTIFY_REDIRECT_URI;
   }
 

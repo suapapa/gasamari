@@ -6,11 +6,9 @@ from routes.lyrics import router as lyrics_router
 
 app = FastAPI(title="Gasamari Lyrics API", version="0.1.0")
 
-origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["GET"],
     allow_headers=["*"],
