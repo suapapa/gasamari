@@ -36,6 +36,59 @@ export function getSpotifyConfig() {
   return { clientId, clientSecret };
 }
 
+function isUnusableOrigin(origin: string): boolean {
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === "0.0.0.0" || hostname === "::" || hostname === "[::]";
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Public site origin for OAuth redirect_uri and post-auth redirects.
+ * Docker/Next sets HOSTNAME=0.0.0.0 for bind address; request.url can then
+ * become http://0.0.0.0:3000 — never use that in browser redirects.
+ */
+export function resolveAppOrigin(request: {
+  nextUrl: { origin: string; protocol: string };
+  headers: Headers;
+}): string {
+  const configured =
+    process.env.APP_URL?.replace(/\/$/, "") ||
+    (process.env.SPOTIFY_REDIRECT_URI
+      ? new URL(process.env.SPOTIFY_REDIRECT_URI).origin
+      : undefined);
+
+  if (configured && !isUnusableOrigin(configured)) {
+    return configured;
+  }
+
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const forwardedProto =
+    request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
+    request.nextUrl.protocol.replace(":", "");
+
+  if (forwardedHost) {
+    const origin = `${forwardedProto}://${forwardedHost}`;
+    if (!isUnusableOrigin(origin)) return origin;
+  }
+
+  const host = request.headers.get("host");
+  if (host) {
+    const origin = `${forwardedProto}://${host}`;
+    if (!isUnusableOrigin(origin)) return origin;
+  }
+
+  if (!isUnusableOrigin(request.nextUrl.origin)) {
+    return request.nextUrl.origin;
+  }
+
+  throw new Error(
+    "Cannot resolve public app origin. Set APP_URL or SPOTIFY_REDIRECT_URI to your public URL.",
+  );
+}
+
 export function resolveRedirectUri(requestOrigin: string): string {
   if (process.env.SPOTIFY_REDIRECT_URI) {
     return process.env.SPOTIFY_REDIRECT_URI;

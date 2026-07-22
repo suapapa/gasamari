@@ -176,7 +176,18 @@ pnpm dev:api
 | Frontend | Vercel |
 | Backend | Railway, Fly.io, 또는 개인 서버 |
 
-배포 시 환경 변수와 Spotify Redirect URI를 프로덕션 도메인으로 업데이트하세요.
+배포 시 루트 `.env`에서 **공개 URL**을 설정하세요 (`0.0.0.0` / `127.0.0.1` 금지):
+
+```env
+APP_URL=https://your-domain.com
+SPOTIFY_REDIRECT_URI=https://your-domain.com/api/auth/callback/spotify
+NEXT_PUBLIC_API_BASE_URL=https://your-api-domain.com
+CORS_ORIGINS=https://your-domain.com
+```
+
+Spotify Dashboard Redirect URI에도 같은 `SPOTIFY_REDIRECT_URI`를 등록한 뒤 컨테이너를 다시 띄우세요.
+
+Docker의 `HOSTNAME=0.0.0.0`은 바인드 주소일 뿐이며, OAuth 리다이렉트에 쓰면 `ERR_CONNECTION_REFUSED`가 납니다.
 
 ## 알려진 제한사항
 

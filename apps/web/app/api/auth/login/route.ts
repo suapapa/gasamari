@@ -5,6 +5,7 @@ import {
   COOKIE_NAMES,
   generateCodeChallenge,
   generateCodeVerifier,
+  resolveAppOrigin,
   resolveRedirectUri,
 } from "@/lib/spotify";
 
@@ -20,7 +21,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const verifier = generateCodeVerifier();
   const challenge = generateCodeChallenge(verifier);
   const state = crypto.randomBytes(16).toString("hex");
-  const redirectUri = resolveRedirectUri(request.nextUrl.origin);
+  const origin = resolveAppOrigin(request);
+  const redirectUri = resolveRedirectUri(origin);
 
   const authUrl = buildAuthUrl(state, challenge, redirectUri);
   const response = NextResponse.redirect(authUrl);
