@@ -323,8 +323,10 @@ export const LYRICS_EFFECTS: LyricsEffect[] = [
       void main() {
         float p = clamp(uProgress, 0.0, 1.0);
         vec4 color = texture2D(uTexture, vUv);
-        float sweep = smoothstep(p - 0.12, p, 1.0 - vUv.y);
-        float line = smoothstep(0.02, 0.0, abs((1.0 - vUv.y) - p));
+        // Reveal top→bottom: visible once progress passes each scanline.
+        float scan = 1.0 - vUv.y;
+        float sweep = smoothstep(scan - 0.12, scan, p);
+        float line = smoothstep(0.02, 0.0, abs(scan - p));
         color.rgb += uGlowColor * line * 1.4;
         color.a *= sweep;
         if (color.a < 0.01) discard;
@@ -368,7 +370,8 @@ export const LYRICS_EFFECTS: LyricsEffect[] = [
       void main() {
         float p = clamp(uProgress, 0.0, 1.0);
         vec4 color = texture2D(uTexture, vUv);
-        float wipe = smoothstep(p - 0.1, p, vUv.x);
+        // Reveal left→right; p=1 must leave the full line visible.
+        float wipe = smoothstep(vUv.x - 0.1, vUv.x, p);
         float edge = smoothstep(0.02, 0.0, abs(vUv.x - p));
         color.rgb += uGlowColor * edge * 1.3;
         color.a *= wipe;
@@ -386,8 +389,10 @@ export const LYRICS_EFFECTS: LyricsEffect[] = [
       void main() {
         float p = clamp(uProgress, 0.0, 1.0);
         vec4 color = texture2D(uTexture, vUv);
+        // Diagonal reveal (bottom-left → top-right). Old mask used
+        // smoothstep(p-ε, p, diag), which hid everything as p→1.
         float diag = (vUv.x + vUv.y) * 0.5;
-        float mask = smoothstep(p - 0.14, p, diag);
+        float mask = smoothstep(diag - 0.14, diag, p);
         float edge = smoothstep(0.03, 0.0, abs(diag - p));
         color.rgb += uGlowColor * edge * 1.5;
         color.a *= mask;
