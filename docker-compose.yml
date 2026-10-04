@@ -23,8 +23,9 @@ services:
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:?set SPOTIFY_CLIENT_ID in .env}
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:?set SPOTIFY_CLIENT_SECRET in .env}
       SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-http://localhost:3000/api/auth/callback/spotify}
-      # Server-only: Next /api/lyrics → FastAPI (Docker DNS). Not used by the browser.
-      API_BASE_URL: ${API_BASE_URL:-http://api:8000}
+      # Always use Compose DNS. Do not inherit host .env API_BASE_URL
+      # (http://127.0.0.1:8000 points at the web container itself).
+      API_BASE_URL: http://api:8000
     depends_on:
       api:
         condition: service_healthy

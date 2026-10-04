@@ -1,7 +1,8 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useSyncExternalStore } from "react";
 import { BlurText } from "@/components/BlurText";
+import { isWebGLAvailable, WebGLLyrics } from "@/components/WebGLLyrics";
 import type { LyricLine, ThemeColors } from "@/types";
 
 interface CurrentLyricsProps {
@@ -10,11 +11,27 @@ interface CurrentLyricsProps {
   isLoading: boolean;
 }
 
+function subscribeReducedMotion(onStoreChange: () => void): () => void {
+  const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+  mq.addEventListener("change", onStoreChange);
+  return () => mq.removeEventListener("change", onStoreChange);
+}
+
+function usePreferWebGL(): boolean {
+  return useSyncExternalStore(
+    subscribeReducedMotion,
+    () => isWebGLAvailable() && !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false,
+  );
+}
+
 export const CurrentLyrics = memo(function CurrentLyrics({
   line,
   theme,
   isLoading,
 }: CurrentLyricsProps) {
+  const preferWebGL = usePreferWebGL();
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center gap-3" aria-busy="true">
@@ -32,12 +49,23 @@ export const CurrentLyrics = memo(function CurrentLyrics({
     );
   }
 
+  // Reduced motion / no WebGL: keep the lightweight DOM transition.
+  if (!preferWebGL) {
+    return (
+      <BlurText
+        key={line.timeMs}
+        text={line.text}
+        className="w-full px-4 sm:px-8 md:px-12 text-[clamp(2.75rem,7vw+1rem,8rem)] leading-[1.15] break-keep text-foreground"
+        glowColor={theme.glow}
+      />
+    );
+  }
+
   return (
-    <BlurText
-      key={line.timeMs}
+    <WebGLLyrics
       text={line.text}
-      className="w-full px-4 sm:px-8 md:px-12 text-[clamp(2.75rem,7vw+1rem,8rem)] leading-[1.15] break-keep text-foreground"
       glowColor={theme.glow}
+      className="h-[min(52vh,28rem)] w-full max-w-5xl px-2 sm:px-4"
     />
   );
 });

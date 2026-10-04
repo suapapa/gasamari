@@ -66,6 +66,14 @@ export function LyricsViewer() {
       );
     }
 
+    if (lyricsError) {
+      return (
+        <p className="text-center text-foreground/60 font-body">
+          Could not load lyrics. Check that the API server is running.
+        </p>
+      );
+    }
+
     return (
       <CurrentLyrics
         line={activeLine}
