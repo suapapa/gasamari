@@ -142,6 +142,11 @@ export class LyricsEngine {
       this.applyEffect(effect, glowColor);
       this.lastEffectId = effect.id;
 
+      const preview = text.length > 48 ? `${text.slice(0, 48)}…` : text;
+      console.log(
+        `[Gasamari] lyrics effect: ${effect.id} (${effect.duration.toFixed(2)}s) — "${preview}"`,
+      );
+
       this.mesh.material.uniforms.uTexture.value = this.texture;
       this.mesh.material.uniforms.uProgress.value = 0;
       this.mesh.material.uniforms.uSeed.value = Math.random() * 100;

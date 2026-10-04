@@ -6,11 +6,8 @@ export interface TextCanvasResult {
   height: number;
 }
 
-function isCjk(char: string): boolean {
-  return /[\u3000-\u9fff\uac00-\ud7af\uf900-\ufaff]/.test(char);
-}
-
-function wrapLine(
+/** Last-resort wrap when a single token is wider than the line. */
+function wrapOversizedToken(
   ctx: CanvasRenderingContext2D,
   text: string,
   maxWidth: number,
@@ -20,48 +17,67 @@ function wrapLine(
   const lines: string[] = [];
   let current = "";
 
-  for (let i = 0; i < text.length; i += 1) {
-    const char = text[i] ?? "";
+  for (const char of text) {
     const next = current + char;
     if (ctx.measureText(next).width > maxWidth && current) {
       lines.push(current);
-      current = char === " " ? "" : char;
+      current = char;
     } else {
       current = next;
     }
   }
 
   if (current) lines.push(current);
-
-  if (lines.length <= 1 || text.split("").some(isCjk)) return lines;
-
   return lines;
 }
 
+/**
+ * Wrap at whitespace (Korean 어절 / English words). Only split inside a token
+ * when that token alone exceeds maxWidth — never break "같아" into "같"/"아"
+ * just because the line is getting full.
+ */
 function wrapParagraph(
   ctx: CanvasRenderingContext2D,
   paragraph: string,
   maxWidth: number,
 ): string[] {
-  const words = paragraph.split(/(\s+)/);
-  if (words.length <= 1 || paragraph.split("").some(isCjk)) {
-    return wrapLine(ctx, paragraph, maxWidth);
-  }
+  const tokens = paragraph.split(/(\s+)/).filter((token) => token.length > 0);
+  if (tokens.length === 0) return [];
 
   const lines: string[] = [];
   let current = "";
 
-  for (const word of words) {
-    const next = current + word;
-    if (ctx.measureText(next).width > maxWidth && current.trim()) {
-      lines.push(current.trimEnd());
-      current = word.trimStart();
-    } else {
-      current = next;
+  const flush = () => {
+    const trimmed = current.trimEnd();
+    if (trimmed) lines.push(trimmed);
+    current = "";
+  };
+
+  for (const token of tokens) {
+    if (/^\s+$/.test(token)) {
+      if (current) current += token;
+      continue;
     }
+
+    const candidate = current ? current + token : token;
+    if (!current || ctx.measureText(candidate).width <= maxWidth) {
+      current = candidate;
+      continue;
+    }
+
+    flush();
+
+    if (ctx.measureText(token).width <= maxWidth) {
+      current = token;
+      continue;
+    }
+
+    const chunks = wrapOversizedToken(ctx, token, maxWidth);
+    lines.push(...chunks.slice(0, -1));
+    current = chunks[chunks.length - 1] ?? "";
   }
 
-  if (current.trim()) lines.push(current.trimEnd());
+  flush();
   return lines;
 }
 
@@ -100,10 +116,10 @@ export function renderLyricsTexture(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  // Match CurrentLyrics clamp(2.75rem, 7vw + 1rem, 8rem) roughly.
+  // Match CurrentLyrics clamp(3.25rem, 9vw + 1rem, 10rem) roughly.
   const layoutWidth = Math.max(cssWidth, 320);
   const vw = layoutWidth / 100;
-  const cssFontPx = Math.min(128, Math.max(44, 7 * vw + 16));
+  const cssFontPx = Math.min(160, Math.max(52, 9 * vw + 16));
   const fontPx = cssFontPx * dpr;
   const maxTextWidth = width * 0.88;
   const lineHeight = fontPx * 1.15;

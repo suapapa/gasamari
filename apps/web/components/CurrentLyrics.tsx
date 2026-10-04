@@ -55,7 +55,7 @@ export const CurrentLyrics = memo(function CurrentLyrics({
       <BlurText
         key={line.timeMs}
         text={line.text}
-        className="w-full px-4 sm:px-8 md:px-12 text-[clamp(2.75rem,7vw+1rem,8rem)] leading-[1.15] break-keep text-foreground"
+        className="w-full px-4 sm:px-8 md:px-12 text-[clamp(3.25rem,9vw+1rem,10rem)] leading-[1.15] break-keep text-foreground"
         glowColor={theme.glow}
       />
     );
@@ -65,7 +65,7 @@ export const CurrentLyrics = memo(function CurrentLyrics({
     <WebGLLyrics
       text={line.text}
       glowColor={theme.glow}
-      className="h-[min(52vh,28rem)] w-full max-w-5xl px-2 sm:px-4"
+      className="h-[min(58vh,34rem)] w-full max-w-6xl px-2 sm:px-4"
     />
   );
 });

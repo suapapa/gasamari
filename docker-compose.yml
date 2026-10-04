@@ -9,7 +9,9 @@ services:
       LYRICS_CACHE_DIR: /app/cache/lyrics
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
     volumes:
-      - lyrics-cache:/app/cache/lyrics
+      # Share host cache with the container so locally fetched LRC survives
+      # rebuilds and stays available when providers stop returning synced lyrics.
+      - ./apps/api/cache/lyrics:/app/cache/lyrics
     restart: unless-stopped
 
   web:
@@ -30,6 +32,3 @@ services:
       api:
         condition: service_healthy
     restart: unless-stopped
-
-volumes:
-  lyrics-cache:

@@ -98,7 +98,7 @@ export function WebGLLyrics({ text, glowColor, className }: WebGLLyricsProps) {
     return (
       <BlurText
         text={text}
-        className="w-full px-4 sm:px-8 md:px-12 text-[clamp(2.75rem,7vw+1rem,8rem)] leading-[1.15] break-keep text-foreground"
+        className="w-full px-4 sm:px-8 md:px-12 text-[clamp(3.25rem,9vw+1rem,10rem)] leading-[1.15] break-keep text-foreground"
         glowColor={glowColor}
       />
     );

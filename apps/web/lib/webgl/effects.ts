@@ -226,10 +226,14 @@ export const LYRICS_EFFECTS: LyricsEffect[] = [
         float p = clamp(uProgress, 0.0, 1.0);
         vec4 color = texture2D(uTexture, vUv);
         float n = hash21(vUv * 6.0 + uSeed);
-        float radial = 1.0 - length(vUv - 0.5) * 1.35;
-        float mask = smoothstep(p - 0.18, p + 0.05, radial + n * 0.35);
-        float edge = smoothstep(0.0, 0.12, mask) * (1.0 - smoothstep(0.55, 1.0, mask));
-        color.rgb += uGlowColor * edge * 1.2;
+        // Higher in the center; corners stay above ~0 so p=1 can fully open.
+        float field = 1.0 - length(vUv - 0.5) * 1.2 + n * 0.25;
+        // p=0 → only the hot center shows; p=1 → cutoff below every pixel.
+        float cutoff = mix(1.25, -0.35, easeOutCubic(p));
+        float mask = smoothstep(cutoff - 0.12, cutoff + 0.18, field);
+        mask = mix(mask, 1.0, smoothstep(0.9, 1.0, p));
+        float edge = smoothstep(0.0, 0.15, mask) * (1.0 - smoothstep(0.45, 1.0, mask));
+        color.rgb += uGlowColor * edge * 1.2 * (1.0 - p);
         color.a *= mask;
         if (color.a < 0.01) discard;
         gl_FragColor = color;
@@ -350,6 +354,403 @@ export const LYRICS_EFFECTS: LyricsEffect[] = [
         vec4 color = texture2D(uTexture, vUv);
         color.rgb += uGlowColor * (1.0 - p) * color.a * 0.55;
         color.a *= mix(0.2, 1.0, p);
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "horizontalWipe",
+    duration: 0.7,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = clamp(uProgress, 0.0, 1.0);
+        vec4 color = texture2D(uTexture, vUv);
+        float wipe = smoothstep(p - 0.1, p, vUv.x);
+        float edge = smoothstep(0.02, 0.0, abs(vUv.x - p));
+        color.rgb += uGlowColor * edge * 1.3;
+        color.a *= wipe;
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "diagonalSlash",
+    duration: 0.75,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = clamp(uProgress, 0.0, 1.0);
+        vec4 color = texture2D(uTexture, vUv);
+        float diag = (vUv.x + vUv.y) * 0.5;
+        float mask = smoothstep(p - 0.14, p, diag);
+        float edge = smoothstep(0.03, 0.0, abs(diag - p));
+        color.rgb += uGlowColor * edge * 1.5;
+        color.a *= mask;
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "typewriterBars",
+    duration: 0.8,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = clamp(uProgress, 0.0, 1.0);
+        float cols = 32.0;
+        float col = floor(vUv.x * cols);
+        float threshold = p * cols;
+        float visible = step(col, threshold);
+        float cursor = 1.0 - smoothstep(0.0, 1.2, abs(col - threshold));
+        vec4 color = texture2D(uTexture, vUv);
+        color.rgb += uGlowColor * cursor * 0.9;
+        color.a *= visible;
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "mirrorFold",
+    duration: 0.85,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        vec2 uv = vUv;
+        float fold = (1.0 - p) * 0.5;
+        uv.x = mix(abs(uv.x - 0.5) + 0.5 - fold, uv.x, p);
+        vec4 color = texture2D(uTexture, uv);
+        color.rgb += uGlowColor * (1.0 - p) * color.a * 0.4;
+        color.a *= mix(0.3, 1.0, p);
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "elasticBounce",
+    duration: 0.9,
+    vertexShader: /* glsl */ `
+      ${COMMON_VERT_HEAD}
+      void main() {
+        vUv = uv;
+        float t = clamp(uProgress, 0.0, 1.0);
+        float p = easeOutBack(t);
+        vec3 pos = position;
+        pos.y *= mix(0.2, 1.0, p);
+        pos.x *= mix(1.35, 1.0, p);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = clamp(uProgress, 0.0, 1.0);
+        vec4 color = texture2D(uTexture, vUv);
+        color.rgb += uGlowColor * (1.0 - p) * color.a * 0.35;
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "smokeDrift",
+    duration: 0.9,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        float n = hash21(vUv * 3.0 + uTime * 0.2 + uSeed);
+        vec2 drift = vec2(
+          sin(vUv.y * 10.0 + uTime * 2.0) * 0.04,
+          (n - 0.5) * 0.06
+        ) * (1.0 - p);
+        vec4 color = texture2D(uTexture, vUv + drift);
+        color.a *= mix(0.25 + n * 0.4, 1.0, p);
+        color.rgb += uGlowColor * (1.0 - p) * color.a * 0.3;
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "neonPulse",
+    duration: 0.75,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        vec4 color = texture2D(uTexture, vUv);
+        float pulse = sin(uTime * 16.0 + uSeed) * 0.5 + 0.5;
+        float glow = (1.0 - p) * (0.5 + pulse * 0.8);
+        color.rgb += uGlowColor * glow * color.a;
+        color.rgb = mix(color.rgb * 0.4, color.rgb, p);
+        color.a *= mix(0.4, 1.0, p);
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "sliceAssemble",
+    duration: 0.85,
+    vertexShader: /* glsl */ `
+      ${COMMON_VERT_HEAD}
+      void main() {
+        vUv = uv;
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        float row = floor(uv.y * 10.0);
+        float n = hash21(vec2(row, uSeed));
+        float dir = n > 0.5 ? 1.0 : -1.0;
+        vec3 pos = position;
+        pos.x += dir * (1.0 - p) * (0.55 + n * 0.45);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        vec4 color = texture2D(uTexture, vUv);
+        float row = floor(vUv.y * 10.0);
+        float line = 1.0 - smoothstep(0.0, 0.04, abs(fract(vUv.y * 10.0) - 0.5));
+        color.rgb += uGlowColor * line * (1.0 - p) * 0.6;
+        color.a *= mix(0.35, 1.0, p);
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "spiralIn",
+    duration: 0.95,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        vec2 c = vUv - 0.5;
+        float dist = length(c);
+        float angle = (1.0 - p) * 6.28318 * (1.0 - dist);
+        float s = sin(angle);
+        float cs = cos(angle);
+        vec2 spun = vec2(cs * c.x - s * c.y, s * c.x + cs * c.y);
+        spun *= mix(0.3, 1.0, p);
+        vec2 uv = spun + 0.5;
+        vec4 color = texture2D(uTexture, uv);
+        color.rgb += uGlowColor * (1.0 - p) * color.a * 0.5;
+        color.a *= step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "inkBleed",
+    duration: 0.9,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = clamp(uProgress, 0.0, 1.0);
+        float n = hash21(vUv * 8.0 + uSeed);
+        float bleed = (1.0 - p) * (0.02 + n * 0.03);
+        vec4 color = vec4(0.0);
+        color += texture2D(uTexture, vUv + vec2(bleed, 0.0));
+        color += texture2D(uTexture, vUv - vec2(bleed, 0.0));
+        color += texture2D(uTexture, vUv + vec2(0.0, bleed));
+        color += texture2D(uTexture, vUv - vec2(0.0, bleed));
+        color *= 0.25;
+        float edge = smoothstep(0.0, 0.2, p) * (1.0 - smoothstep(0.7, 1.0, p));
+        color.rgb += uGlowColor * edge * color.a * 0.8;
+        color.a *= mix(0.4, 1.0, easeOutCubic(p));
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "strobeFlash",
+    duration: 0.65,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = clamp(uProgress, 0.0, 1.0);
+        vec4 color = texture2D(uTexture, vUv);
+        float flash = step(0.5, fract(uTime * 12.0 + uSeed)) * (1.0 - p);
+        color.rgb = mix(color.rgb, vec3(1.0), flash * 0.7);
+        color.rgb += uGlowColor * flash * 0.5;
+        color.a *= mix(0.2 + flash * 0.6, 1.0, p);
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "gravityDrop",
+    duration: 0.8,
+    vertexShader: /* glsl */ `
+      ${COMMON_VERT_HEAD}
+      void main() {
+        vUv = uv;
+        float t = clamp(uProgress, 0.0, 1.0);
+        float p = easeOutBack(t);
+        vec3 pos = position;
+        float n = hash21(uv * 15.0 + uSeed);
+        pos.y += (1.0 - p) * (0.7 + n * 0.4);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        vec4 color = texture2D(uTexture, vUv);
+        color.rgb += uGlowColor * (1.0 - p) * color.a * 0.35;
+        color.a *= mix(0.25, 1.0, p);
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "prismSplit",
+    duration: 0.8,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        float spread = (1.0 - p) * 0.04;
+        float r = texture2D(uTexture, vUv + vec2(spread, spread * 0.4)).r;
+        float g = texture2D(uTexture, vUv).g;
+        float b = texture2D(uTexture, vUv - vec2(spread, spread * 0.4)).b;
+        float a = texture2D(uTexture, vUv).a;
+        vec3 rgb = vec3(r, g, b) + uGlowColor * (1.0 - p) * a * 0.25;
+        if (a < 0.01) discard;
+        gl_FragColor = vec4(rgb, a);
+      }
+    `,
+  },
+  {
+    id: "mosaicRain",
+    duration: 0.9,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        float blocks = 24.0;
+        vec2 cell = floor(vUv * blocks);
+        float n = hash21(cell + uSeed);
+        float appear = step(n * 0.85, p + 0.05);
+        vec2 uv = (cell + 0.5) / blocks;
+        uv = mix(uv, vUv, p);
+        vec4 color = texture2D(uTexture, uv);
+        color.a *= appear;
+        color.rgb += uGlowColor * (1.0 - p) * color.a * 0.35 * n;
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "tunnelZoom",
+    duration: 0.85,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        vec2 c = vUv - 0.5;
+        float zoom = mix(0.25, 1.0, p);
+        vec2 uv = c / zoom + 0.5;
+        float rings = sin(length(c) * 40.0 - uTime * 10.0) * (1.0 - p) * 0.5 + 0.5;
+        vec4 color = texture2D(uTexture, uv);
+        color.rgb += uGlowColor * rings * (1.0 - p) * color.a * 0.45;
+        color.a *= step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "waveWarp",
+    duration: 0.8,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        float amp = (1.0 - p) * 0.1;
+        vec2 uv = vUv;
+        uv.x += sin(uv.y * 30.0 + uTime * 6.0) * amp;
+        uv.y += sin(uv.x * 22.0 - uTime * 5.0 + uSeed) * amp * 0.6;
+        vec4 color = texture2D(uTexture, uv);
+        color.rgb += uGlowColor * (1.0 - p) * color.a * 0.4;
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "letterboxReveal",
+    duration: 0.7,
+    vertexShader: PASSTHROUGH_VERT,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        float band = mix(0.5, 0.0, p);
+        float mask = step(band, vUv.y) * step(vUv.y, 1.0 - band);
+        float edge =
+          smoothstep(0.0, 0.02, abs(vUv.y - band)) *
+          smoothstep(0.0, 0.02, abs(vUv.y - (1.0 - band)));
+        edge = 1.0 - min(edge, 1.0);
+        vec4 color = texture2D(uTexture, vUv);
+        color.rgb += uGlowColor * edge * (1.0 - p) * 0.8;
+        color.a *= mask;
+        if (color.a < 0.01) discard;
+        gl_FragColor = color;
+      }
+    `,
+  },
+  {
+    id: "sparkAssemble",
+    duration: 0.9,
+    vertexShader: /* glsl */ `
+      ${COMMON_VERT_HEAD}
+      void main() {
+        vUv = uv;
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        float n = hash21(uv * 55.0 + uSeed);
+        float ang = hash21(uv.yx + uSeed) * 6.28318;
+        vec2 dir = vec2(cos(ang), sin(ang));
+        vec3 pos = position;
+        pos.xy += dir * (1.0 - p) * (0.2 + n * 1.1);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      ${COMMON_FRAG_HEAD}
+      void main() {
+        float p = easeOutCubic(clamp(uProgress, 0.0, 1.0));
+        vec4 color = texture2D(uTexture, vUv);
+        float spark = hash21(vUv * 80.0 + floor(uTime * 20.0));
+        color.rgb += uGlowColor * spark * (1.0 - p) * color.a * 0.9;
+        color.a *= mix(0.15, 1.0, p);
         if (color.a < 0.01) discard;
         gl_FragColor = color;
       }
