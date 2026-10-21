@@ -86,12 +86,16 @@ export function LyricsViewer() {
 
   return (
     <AlbumArtTheme albumArtUrl={track?.albumArt ?? null} theme={theme}>
-      <div className="flex items-center justify-between px-6 py-4 pt-safe">
-        <span className="font-heading text-xl text-accent">Gasamari</span>
-        {isAuthenticated && <SpotifyLoginButton isAuthenticated />}
-      </div>
-
-      <NowPlayingHeader track={track} />
+      {(track || isAuthenticated) && (
+        <header className="flex items-center gap-3 px-6 py-3 pt-safe">
+          <NowPlayingHeader track={track} />
+          {isAuthenticated && (
+            <div className="ml-auto shrink-0">
+              <SpotifyLoginButton isAuthenticated />
+            </div>
+          )}
+        </header>
+      )}
 
       <main className="flex w-full flex-1 flex-col items-center justify-center px-2 sm:px-4 pb-safe">
         {renderMessage()}
