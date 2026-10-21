@@ -15,6 +15,15 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         // Keep the screen on while the lyrics display is in use.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // Extend the window into the display cutout (camera hole) area so
+        // no black status-bar strip remains; CSS safe-area padding keeps
+        // content clear of the camera itself.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            WindowManager.LayoutParams params = getWindow().getAttributes();
+            params.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            getWindow().setAttributes(params);
+        }
         enterFullscreen();
     }
 
