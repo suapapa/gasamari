@@ -107,6 +107,34 @@ export function LyricsViewer() {
             <span>
               {formatTime(Math.min(currentProgressMs, track.durationMs))}
             </span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSyncOffsetMs(syncOffsetMs - 500)}
+                className={cn(
+                  "inline-flex size-11 items-center justify-center rounded-full",
+                  "bg-muted/50 text-foreground/70 hover:bg-muted transition-colors",
+                )}
+                aria-label="Decrease sync offset by 500ms"
+              >
+                <Minus className="size-4" />
+              </button>
+              <span className="min-w-16 text-center text-xs text-foreground/70 font-body">
+                {syncOffsetMs > 0 ? "+" : ""}
+                {syncOffsetMs}ms
+              </span>
+              <button
+                type="button"
+                onClick={() => setSyncOffsetMs(syncOffsetMs + 500)}
+                className={cn(
+                  "inline-flex size-11 items-center justify-center rounded-full",
+                  "bg-muted/50 text-foreground/70 hover:bg-muted transition-colors",
+                )}
+                aria-label="Increase sync offset by 500ms"
+              >
+                <Plus className="size-4" />
+              </button>
+            </div>
             <span>{formatTime(track.durationMs)}</span>
           </div>
           <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
@@ -124,35 +152,6 @@ export function LyricsViewer() {
                 backgroundColor: theme.accent,
               }}
             />
-          </div>
-          <div className="flex items-center justify-center gap-3">
-            <span className="text-xs text-foreground/50 font-body">Sync offset</span>
-            <button
-              type="button"
-              onClick={() => setSyncOffsetMs(syncOffsetMs - 500)}
-              className={cn(
-                "inline-flex size-11 items-center justify-center rounded-full",
-                "bg-muted/50 text-foreground/70 hover:bg-muted transition-colors",
-              )}
-              aria-label="Decrease sync offset by 500ms"
-            >
-              <Minus className="size-4" />
-            </button>
-            <span className="min-w-16 text-center text-xs text-foreground/70 font-body">
-              {syncOffsetMs > 0 ? "+" : ""}
-              {syncOffsetMs}ms
-            </span>
-            <button
-              type="button"
-              onClick={() => setSyncOffsetMs(syncOffsetMs + 500)}
-              className={cn(
-                "inline-flex size-11 items-center justify-center rounded-full",
-                "bg-muted/50 text-foreground/70 hover:bg-muted transition-colors",
-              )}
-              aria-label="Increase sync offset by 500ms"
-            >
-              <Plus className="size-4" />
-            </button>
           </div>
         </footer>
       )}
