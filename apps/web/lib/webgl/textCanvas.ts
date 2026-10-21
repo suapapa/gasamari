@@ -116,18 +116,52 @@ export function renderLyricsTexture(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  // Match CurrentLyrics clamp(3.25rem, 9vw + 1rem, 10rem) roughly.
+  // Match CurrentLyrics clamp(3.25rem, 9vw + 1rem, 10rem) roughly,
+  // then shrink until the whole wrapped block also fits the canvas height.
+  // Picking the size from width alone clipped the first/last lines
+  // whenever a long lyric wrapped to 3+ lines in a short (landscape) canvas.
   const layoutWidth = Math.max(cssWidth, 320);
   const vw = layoutWidth / 100;
-  const cssFontPx = Math.min(160, Math.max(52, 9 * vw + 16));
-  const fontPx = cssFontPx * dpr;
   const maxTextWidth = width * 0.88;
-  const lineHeight = fontPx * 1.15;
-
-  ctx.font = `500 ${fontPx}px ${FONT_FAMILY}`;
+  // Leave headroom for the glow (shadowBlur) so glyphs never touch the edge.
+  const maxBlockHeight = height * 0.88;
+  const minCssFontPx = 16;
 
   const paragraphs = text.split(/\n+/).filter(Boolean);
-  const lines = paragraphs.flatMap((p) => wrapParagraph(ctx, p, maxTextWidth));
+
+  let cssFontPx = Math.min(160, Math.max(52, 9 * vw + 16));
+  let fontPx = cssFontPx * dpr;
+  let lineHeight = fontPx * 1.15;
+  let lines: string[] = [];
+
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    fontPx = cssFontPx * dpr;
+    lineHeight = fontPx * 1.15;
+    ctx.font = `500 ${fontPx}px ${FONT_FAMILY}`;
+    lines = paragraphs.flatMap((p) => wrapParagraph(ctx, p, maxTextWidth));
+
+    // Glyphs can poke above/below the 1.15 line box depending on the
+    // font's metrics, so fit against the measured glyph extent too.
+    let glyphHeight = 0;
+    for (const line of lines) {
+      const metrics = ctx.measureText(line);
+      glyphHeight = Math.max(
+        glyphHeight,
+        metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent,
+      );
+    }
+    const blockHeight = Math.max(
+      lineHeight,
+      (lines.length - 1) * lineHeight + Math.max(lineHeight, glyphHeight),
+    );
+    if (blockHeight <= maxBlockHeight || cssFontPx <= minCssFontPx) break;
+
+    // Scale straight to the height that would fit; wrapping may drop a
+    // line as the font shrinks, which only helps. Guard against stalls.
+    const scaled = Math.floor(cssFontPx * (maxBlockHeight / blockHeight));
+    cssFontPx = Math.max(minCssFontPx, Math.min(cssFontPx - 1, scaled));
+  }
+
   const blockHeight = Math.max(lineHeight, lines.length * lineHeight);
   const startY = height / 2 - blockHeight / 2 + lineHeight / 2;
 

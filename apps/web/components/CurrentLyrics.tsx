@@ -65,7 +65,7 @@ export const CurrentLyrics = memo(function CurrentLyrics({
     <WebGLLyrics
       text={line.text}
       glowColor={theme.glow}
-      className="h-[min(58vh,34rem)] w-full max-w-6xl px-2 sm:px-4"
+      className="h-[min(80dvh,44rem)] w-full max-w-6xl px-2 sm:px-4"
     />
   );
 });
