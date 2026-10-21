@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <filter id="glow" x="-40%" y="-120%" width="180%" height="340%">
+      <feDropShadow dx="0" dy="0" stdDeviation="26" flood-color="#22c55e" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+  <!-- Android adaptive foreground: transparent, artwork inside the safe zone -->
+  <g transform="translate(512 512) scale(0.7) translate(-512 -512)">
+    <rect x="322" y="312" width="380" height="54" rx="27" fill="#7c74e8" opacity="0.85"/>
+    <rect x="182" y="462" width="660" height="88" rx="44" fill="#22c55e" filter="url(#glow)"/>
+    <circle cx="512" cy="506" r="27" fill="#f8fafc" stroke="#0f0f23" stroke-width="11"/>
+    <rect x="272" y="646" width="480" height="54" rx="27" fill="#7c74e8" opacity="0.85"/>
+  </g>
+</svg>
