@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { consumeAuthHandoff } from "@/lib/authHandoff";
-import { applySessionCookies } from "@/lib/spotify";
+import { applySessionCookies, resolveAppOrigin } from "@/lib/spotify";
 
 /**
  * Exchanges a one-time native OAuth handoff code for the usual HttpOnly
@@ -10,7 +10,19 @@ import { applySessionCookies } from "@/lib/spotify";
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const code = request.nextUrl.searchParams.get("code");
-  const origin = request.nextUrl.origin;
+
+  // Never redirect to request.nextUrl.origin: behind Docker/reverse
+  // proxies that can be the bind address (0.0.0.0:3000). Resolve the
+  // configured public origin instead (same helper as the callback).
+  let origin: string;
+  try {
+    origin = resolveAppOrigin(request);
+  } catch {
+    return NextResponse.json(
+      { error: "Cannot resolve public app origin." },
+      { status: 500 },
+    );
+  }
 
   const session = code ? consumeAuthHandoff(code) : null;
   if (!session) {
