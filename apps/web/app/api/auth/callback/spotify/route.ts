@@ -1,21 +1,28 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { createAuthHandoff } from "@/lib/authHandoff";
 import {
+  applySessionCookies,
   COOKIE_NAMES,
   exchangeCodeForTokens,
   resolveAppOrigin,
   resolveRedirectUri,
 } from "@/lib/spotify";
 
-const TOKEN_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
-  path: "/",
-};
-
 function redirectToApp(origin: string, path: string): NextResponse {
   return NextResponse.redirect(new URL(path, origin));
+}
+
+/**
+ * Returns the user to the native app. Only an opaque one-time handoff
+ * code (or an error flag) travels in the deep link — never tokens.
+ */
+function redirectToNativeApp(params: Record<string, string>): NextResponse {
+  const url = new URL("gasamari://callback");
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  return NextResponse.redirect(url);
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -36,19 +43,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     );
   }
 
+  const cookieStore = await cookies();
+  const isNative = cookieStore.get(COOKIE_NAMES.oauthNative)?.value === "1";
+
   if (error) {
-    return redirectToApp(origin, "/?error=auth_denied");
+    return isNative
+      ? redirectToNativeApp({ error: "auth_denied" })
+      : redirectToApp(origin, "/?error=auth_denied");
   }
 
   if (!code) {
-    return redirectToApp(origin, "/?error=missing_code");
+    return isNative
+      ? redirectToNativeApp({ error: "missing_code" })
+      : redirectToApp(origin, "/?error=missing_code");
   }
 
-  const cookieStore = await cookies();
   const codeVerifier = cookieStore.get(COOKIE_NAMES.codeVerifier)?.value;
 
   if (!codeVerifier) {
-    return redirectToApp(origin, "/?error=missing_verifier");
+    return isNative
+      ? redirectToNativeApp({ error: "missing_verifier" })
+      : redirectToApp(origin, "/?error=missing_verifier");
   }
 
   try {
@@ -56,28 +71,30 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const tokens = await exchangeCodeForTokens(code, codeVerifier, redirectUri);
     const expiresAt = Date.now() + tokens.expires_in * 1_000;
 
-    const response = redirectToApp(origin, "/");
-
-    response.cookies.set(COOKIE_NAMES.accessToken, tokens.access_token, {
-      ...TOKEN_COOKIE_OPTIONS,
-      maxAge: tokens.expires_in,
-    });
-    response.cookies.set(COOKIE_NAMES.expiresAt, String(expiresAt), {
-      ...TOKEN_COOKIE_OPTIONS,
-      maxAge: tokens.expires_in,
-    });
-
-    if (tokens.refresh_token) {
-      response.cookies.set(COOKIE_NAMES.refreshToken, tokens.refresh_token, {
-        ...TOKEN_COOKIE_OPTIONS,
-        maxAge: 60 * 60 * 24 * 30,
+    if (isNative) {
+      const handoffCode = createAuthHandoff({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresAt,
       });
+      const response = redirectToNativeApp({ code: handoffCode });
+      response.cookies.delete(COOKIE_NAMES.codeVerifier);
+      response.cookies.delete(COOKIE_NAMES.oauthNative);
+      return response;
     }
 
+    const response = redirectToApp(origin, "/");
+    applySessionCookies(response, {
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      expiresAt,
+    });
     response.cookies.delete(COOKIE_NAMES.codeVerifier);
 
     return response;
   } catch {
-    return redirectToApp(origin, "/?error=token_exchange");
+    return isNative
+      ? redirectToNativeApp({ error: "token_exchange" })
+      : redirectToApp(origin, "/?error=token_exchange");
   }
 }

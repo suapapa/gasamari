@@ -15,7 +15,57 @@ export const COOKIE_NAMES = {
   refreshToken: "spotify_refresh_token",
   expiresAt: "spotify_token_expires_at",
   codeVerifier: "spotify_code_verifier",
+  oauthNative: "spotify_oauth_native",
 } as const;
+
+export interface SpotifySession {
+  accessToken: string;
+  refreshToken?: string;
+  /** Epoch milliseconds when the access token expires. */
+  expiresAt: number;
+}
+
+const SESSION_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+};
+
+/** Sets the HttpOnly Spotify session cookies on a response. */
+export function applySessionCookies(
+  response: {
+    cookies: {
+      set: (
+        name: string,
+        value: string,
+        options: Record<string, unknown>,
+      ) => void;
+    };
+  },
+  session: SpotifySession,
+): void {
+  const maxAgeSeconds = Math.max(
+    1,
+    Math.floor((session.expiresAt - Date.now()) / 1_000),
+  );
+
+  response.cookies.set(COOKIE_NAMES.accessToken, session.accessToken, {
+    ...SESSION_COOKIE_OPTIONS,
+    maxAge: maxAgeSeconds,
+  });
+  response.cookies.set(COOKIE_NAMES.expiresAt, String(session.expiresAt), {
+    ...SESSION_COOKIE_OPTIONS,
+    maxAge: maxAgeSeconds,
+  });
+
+  if (session.refreshToken) {
+    response.cookies.set(COOKIE_NAMES.refreshToken, session.refreshToken, {
+      ...SESSION_COOKIE_OPTIONS,
+      maxAge: 60 * 60 * 24 * 30,
+    });
+  }
+}
 
 export function generateCodeVerifier(): string {
   return crypto.randomBytes(32).toString("base64url");

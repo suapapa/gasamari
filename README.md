@@ -212,7 +212,7 @@ CAP_SERVER_URL=http://192.168.0.10:3000 pnpm cap:sync   # LAN 개발 서버 등
 - [ ] Android release keystore 생성 및 서명 설정 (keystore 파일/비밀번호는 git에 넣지 말 것)
 - [ ] Apple Team 서명, App Store Connect 앱 등록 (`dev.homin.gasamari`)
 - [ ] 웹 변경분 운영 배포 — 앱은 운영 URL을 로드하므로 `NativeBridge` 등 웹 수정은 배포 후에 앱에 반영됩니다
-- [ ] (선택) OAuth를 시스템 브라우저 + `gasamari://callback` 딥링크로 전환 — 현재는 WebView 내 HTTPS 콜백으로 동작하고 스킴만 예약해 둔 상태입니다
+- [x] OAuth 시스템 브라우저 + `gasamari://callback` 딥링크 전환 완료 — 앱에서는 시스템 브라우저(Google 로그인 가능)로 인증하고, 서버가 발급한 1회용 핸드오프 코드(2분 만료)를 WebView가 HttpOnly 쿠키로 교환합니다. 토큰은 URL에 실리지 않습니다
 
 ## 배포
 

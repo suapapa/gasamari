@@ -1,5 +1,6 @@
 "use client";
 
+import { Capacitor } from "@capacitor/core";
 import { LogIn, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,18 @@ export function SpotifyLoginButton({
       window.location.reload();
       return;
     }
+    if (Capacitor.isNativePlatform()) {
+      // Embedded WebViews cannot complete Google/social login, and any
+      // cookies set there never reach this WebView. Run OAuth in the
+      // system browser instead; the server returns via a `gasamari://`
+      // deep link and NativeBridge exchanges the handoff code here.
+      const { Browser } = await import("@capacitor/browser");
+      await Browser.open({
+        url: `${window.location.origin}/api/auth/login?native=1`,
+      });
+      return;
+    }
+
     window.location.href = "/api/auth/login";
   };
 
