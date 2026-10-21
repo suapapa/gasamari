@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GaSaMaRi</string>
+    <string name="title_activity_main">GaSaMaRi</string>
+    <string name="package_name">dev.homin.gasamari</string>
+    <string name="custom_url_scheme">dev.homin.gasamari</string>
+</resources>

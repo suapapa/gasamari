@@ -19,6 +19,7 @@ Spotify에서 현재 재생 중인 곡의 **동기화 가사(LRC)** 를 실시�
 | 영역 | 기술 |
 |------|------|
 | Frontend | Next.js 16, TypeScript, Tailwind CSS, Framer Motion |
+| Mobile | Capacitor 8 (Android / iOS, 운영 웹을 로드하는 네이티브 셸) |
 | Backend | Python 3.11+, FastAPI, syncedlyrics |
 | Auth | Spotify OAuth 2.0 + PKCE (HttpOnly Cookie) |
 | Monorepo | pnpm workspaces |
@@ -37,9 +38,11 @@ Spotify에서 현재 재생 중인 곡의 **동기화 가사(LRC)** 를 실시�
 2. **Redirect URI**에 다음을 **모두** 등록합니다 (Spotify는 접속 주소와 정확히 일치해야 합니다):
    - `http://localhost:3000/api/auth/callback/spotify`
    - `http://127.0.0.1:3000/api/auth/callback/spotify`
-   - 프로덕션: `https://your-domain.com/api/auth/callback/spotify`
+   - 프로덕션: `https://gsmr.homin.dev/api/auth/callback/spotify`
 3. Client ID와 Client Secret을 확인합니다.
 4. ⚠️ Client Secret이 외부에 노출된 적이 있다면 Dashboard에서 **재발급**하세요.
+
+> 등록 방법: [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) 로그인 → 해당 앱 선택 → **Settings** → **Redirect URIs**에 위 주소 입력 후 **Add** → 하단 **Save**. 서버의 `SPOTIFY_REDIRECT_URI` 환경변수와 글자 단위까지 동일해야 합니다. 모바일 앱(Capacitor)도 같은 HTTPS 콜백을 WebView 안에서 사용하므로 추가 등록은 필요 없습니다. `gasamari://callback` 스킴은 시스템 브라우저 OAuth 전환 시를 위해 앱에 예약만 해 두었습니다.
 
 ## 설치 및 실행
 
@@ -112,11 +115,14 @@ pnpm dev:api
 ```text
 gasamari/
 ├── apps/
-│   ├── web/                 # Next.js 프론트엔드
+│   ├── web/                 # Next.js 프론트엔드 + Capacitor 모바일
 │   │   ├── app/             # App Router, API Routes
 │   │   ├── components/      # UI 컴포넌트
 │   │   ├── hooks/           # useNowPlaying, useSyncedLyrics 등
-│   │   └── lib/             # Spotify, LRC 파서, 테마 유틸
+│   │   ├── lib/             # Spotify, LRC 파서, 테마 유틸
+│   │   ├── capacitor.config.ts  # 앱 ID dev.homin.gasamari / GaSaMaRi
+│   │   ├── android/         # Capacitor Android 프로젝트
+│   │   └── ios/             # Capacitor iOS 프로젝트
 │   └── api/                 # FastAPI 가사 백엔드
 │       ├── routes/          # /lyrics 엔드포인트
 │       ├── services/        # syncedlyrics + 캐싱
@@ -170,6 +176,43 @@ uv run ruff check .
 ```bash
 pnpm dev:api
 ```
+
+## 모바일 앱 (Android / iOS)
+
+Capacitor 8 기반입니다. 앱 이름 **GaSaMaRi**, 앱 ID **`dev.homin.gasamari`**.
+Next.js는 SSR + API Route(OAuth 쿠키, 가사 프록시)를 쓰므로 정적 export가 불가능합니다. 그래서 네이티브 셸이 운영 배포(`https://gsmr.homin.dev`)를 로드합니다. 토큰/시크릿은 기존처럼 서버에만 있고 앱 바이너리에는 어떤 Secret도 들어가지 않습니다.
+
+### 사전 요구사항
+
+- Xcode (iOS), Android Studio + Android SDK (Android)
+- **JDK 21** (Capacitor 8 Gradle 요구사항): `brew install openjdk@21` 후 `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`
+- `ANDROID_HOME=$HOME/Library/Android/sdk`
+
+### 명령어
+
+```bash
+cd apps/web
+pnpm install
+pnpm cap:sync        # 네이티브 프로젝트에 설정/셸 동기화
+pnpm cap:android     # Android Studio 열기
+pnpm cap:ios         # Xcode 열기
+pnpm build:android   # 디버그 APK: android/app/build/outputs/apk/debug/app-debug.apk
+pnpm build:ios       # 시뮬레이터용 unsigned 빌드 검증
+```
+
+다른 서버를 바라보게 하려면 동기화 시 오버라이드합니다:
+
+```bash
+CAP_SERVER_URL=http://192.168.0.10:3000 pnpm cap:sync   # LAN 개발 서버 등
+```
+
+### 스토어 제출 전에 남은 것
+
+- [ ] 최종 앱 아이콘/스플래시 교체 (현재 Capacitor 기본 에셋)
+- [ ] Android release keystore 생성 및 서명 설정 (keystore 파일/비밀번호는 git에 넣지 말 것)
+- [ ] Apple Team 서명, App Store Connect 앱 등록 (`dev.homin.gasamari`)
+- [ ] 웹 변경분 운영 배포 — 앱은 운영 URL을 로드하므로 `NativeBridge` 등 웹 수정은 배포 후에 앱에 반영됩니다
+- [ ] (선택) OAuth를 시스템 브라우저 + `gasamari://callback` 딥링크로 전환 — 현재는 WebView 내 HTTPS 콜백으로 동작하고 스킴만 예약해 둔 상태입니다
 
 ## 배포
 

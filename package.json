@@ -6,7 +6,10 @@
     "dev:web": "pnpm --filter web dev",
     "dev:api": "uv run --directory apps/api uvicorn main:app --reload --host 0.0.0.0 --port 8000",
     "build": "pnpm --filter web build",
-    "lint": "pnpm --filter web lint && uv run --directory apps/api ruff check ."
+    "lint": "pnpm --filter web lint && uv run --directory apps/api ruff check .",
+    "mobile:sync": "pnpm --filter web cap:sync",
+    "mobile:android": "pnpm --filter web cap:android",
+    "mobile:ios": "pnpm --filter web cap:ios"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",
