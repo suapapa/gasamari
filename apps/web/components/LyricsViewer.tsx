@@ -38,6 +38,7 @@ export function LyricsViewer() {
           <p className="max-w-md text-foreground/70 font-body">
             Connect your Spotify account and play a song to see synced lyrics in real time.
           </p>
+          <SpotifyLoginButton isAuthenticated={false} />
         </div>
       );
     }
@@ -87,7 +88,7 @@ export function LyricsViewer() {
     <AlbumArtTheme albumArtUrl={track?.albumArt ?? null} theme={theme}>
       <div className="flex items-center justify-between px-6 py-4 pt-safe">
         <span className="font-heading text-xl text-accent">Gasamari</span>
-        <SpotifyLoginButton isAuthenticated={isAuthenticated} />
+        {isAuthenticated && <SpotifyLoginButton isAuthenticated />}
       </div>
 
       <NowPlayingHeader track={track} />
