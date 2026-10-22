@@ -24,7 +24,14 @@ export class LyricsEngine {
   private width = 1;
   private height = 1;
   private generation = 0;
+  private failureReported = false;
   private callbacks: LyricsEngineCallbacks;
+  private handleContextLost = (event: Event): void => {
+    // 앱 WebView에서 GPU 메모리 압박 등으로 컨텍스트가 날아가면 캔버스가
+    // 흰 박스로만 남는다. 복구를 기다리지 않고 DOM 폴백으로 전환한다.
+    event.preventDefault();
+    this.callbacks.onError?.(new Error("WebGL context lost"));
+  };
 
   constructor(canvas: HTMLCanvasElement, callbacks: LyricsEngineCallbacks = {}) {
     this.callbacks = callbacks;
@@ -38,6 +45,7 @@ export class LyricsEngine {
     });
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    canvas.addEventListener("webglcontextlost", this.handleContextLost);
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
@@ -105,9 +113,20 @@ export class LyricsEngine {
     });
   }
 
-  private async paintTexture(text: string, glowColor: string): Promise<void> {
+  /**
+   * Rasterize and commit a new texture. Returns false when a newer line
+   * (or a dispose) superseded this paint while it was in flight — in that
+   * case nothing is touched, so a stale paint can never dispose or
+   * replace the texture the mesh is currently sampling (흰 박스 방지).
+   * The previous texture is disposed only after the new one is bound.
+   */
+  private async paintTexture(
+    text: string,
+    glowColor: string,
+    isCurrent: () => boolean,
+  ): Promise<boolean> {
     await ensureLyricsFont(500);
-    if (this.disposed) return;
+    if (this.disposed || !isCurrent()) return false;
 
     const { canvas } = renderLyricsTexture(
       text,
@@ -115,18 +134,22 @@ export class LyricsEngine {
       this.height,
       glowColor,
     );
+    if (this.disposed || !isCurrent()) return false;
 
-    if (this.texture) {
-      this.texture.dispose();
+    const nextTexture = new THREE.CanvasTexture(canvas);
+    nextTexture.colorSpace = THREE.SRGBColorSpace;
+    nextTexture.needsUpdate = true;
+    nextTexture.generateMipmaps = false;
+    nextTexture.minFilter = THREE.LinearFilter;
+    nextTexture.magFilter = THREE.LinearFilter;
+
+    const prevTexture = this.texture;
+    this.texture = nextTexture;
+    this.mesh.material.uniforms.uTexture.value = nextTexture;
+    if (prevTexture && prevTexture !== nextTexture) {
+      prevTexture.dispose();
     }
-
-    this.texture = new THREE.CanvasTexture(canvas);
-    this.texture.colorSpace = THREE.SRGBColorSpace;
-    this.texture.needsUpdate = true;
-    this.texture.generateMipmaps = false;
-    this.texture.minFilter = THREE.LinearFilter;
-    this.texture.magFilter = THREE.LinearFilter;
-    this.mesh.material.uniforms.uTexture.value = this.texture;
+    return true;
   }
 
   async setLine(text: string, glowColor: string): Promise<void> {
@@ -135,9 +158,14 @@ export class LyricsEngine {
     const generation = ++this.generation;
 
     try {
-      await this.paintTexture(text, glowColor);
-      if (this.disposed || generation !== this.generation) return;
+      const painted = await this.paintTexture(
+        text,
+        glowColor,
+        () => generation === this.generation,
+      );
+      if (!painted || this.disposed) return;
 
+      this.failureReported = false;
       const effect = pickRandomEffect(this.lastEffectId);
       this.applyEffect(effect, glowColor);
       this.lastEffectId = effect.id;
@@ -172,13 +200,18 @@ export class LyricsEngine {
     const generation = this.generation;
 
     try {
-      await this.paintTexture(text, glowColor);
-      if (this.disposed || generation !== this.generation) return;
+      const painted = await this.paintTexture(
+        text,
+        glowColor,
+        () => generation === this.generation,
+      );
+      if (!painted || this.disposed) return;
 
       const [r, g, b] = hexToRgb(glowColor);
       this.mesh.material.uniforms.uGlowColor.value.set(r, g, b);
       this.mesh.material.uniforms.uProgress.value = 1;
       this.renderer.render(this.scene, this.camera);
+      this.reportIfWhiteBox();
     } catch (error) {
       this.callbacks.onError?.(error);
     }
@@ -213,11 +246,61 @@ export class LyricsEngine {
     } else {
       this.rafId = 0;
       this.renderer.render(this.scene, this.camera);
+      this.reportIfWhiteBox();
+    }
+  }
+
+  /**
+   * 앱 WebView에서 텍스처 알파가 통째로 깨지면 가사 대신 불투명한 흰
+   * 박스가 그려지는 경우가 있다. 완성 프레임의 격자를 샘플링해 그런
+   * 프레임이면 DOM 폴백으로 넘긴다 (정상 가사는 대부분이 투명하다).
+   */
+  private reportIfWhiteBox(): void {
+    if (this.disposed || this.failureReported) return;
+
+    const gl = this.renderer.getContext();
+    if (gl.isContextLost()) return;
+
+    const { x: width, y: height } = this.renderer.getDrawingBufferSize(
+      new THREE.Vector2(),
+    );
+    if (width < 2 || height < 2) return;
+
+    const cols = 8;
+    const rows = 5;
+    const pixel = new Uint8Array(4);
+    let white = 0;
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        const x = Math.floor(((col + 0.5) / cols) * width);
+        const y = Math.floor(((row + 0.5) / rows) * height);
+        gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+        if (
+          (pixel[0] ?? 0) > 250 &&
+          (pixel[1] ?? 0) > 250 &&
+          (pixel[2] ?? 0) > 250 &&
+          (pixel[3] ?? 0) > 250
+        ) {
+          white += 1;
+        }
+      }
+    }
+
+    if (white / (cols * rows) >= 0.9) {
+      this.failureReported = true;
+      this.callbacks.onError?.(
+        new Error("WebGL lyrics rendered as a white box"),
+      );
     }
   }
 
   dispose(): void {
+    if (this.disposed) return;
     this.disposed = true;
+    this.renderer.domElement.removeEventListener(
+      "webglcontextlost",
+      this.handleContextLost,
+    );
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
       this.rafId = 0;

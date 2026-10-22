@@ -81,6 +81,14 @@ export function WebGLLyrics({ text, glowColor, className }: WebGLLyricsProps) {
     };
   }, []);
 
+  // Once we fall back to the DOM renderer, stop the WebGL engine for good
+  // so it does not keep drawing into the detached canvas.
+  useEffect(() => {
+    if (!useFallback) return;
+    engineRef.current?.dispose();
+    engineRef.current = null;
+  }, [useFallback]);
+
   useEffect(() => {
     if (useFallback) return;
     const engine = engineRef.current;
